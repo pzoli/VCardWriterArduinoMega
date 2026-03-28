@@ -9,7 +9,6 @@ PN532 nfcDriver(pn532_i2c);
 NfcAdapter nfcAdapter = NfcAdapter(pn532_i2c);
 bool isFormatMode = false;
 
-/*
 bool tryAuthAndWrite(int block, uint8_t* key, uint8_t* data) {
     uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
     uint8_t uidLen;
@@ -65,7 +64,7 @@ void formatTag() {
         Serial.println(success ? F(" Success") : F(" Failure"));
     }
 }
-*/
+
 
 void writeVCard(String name, String phone, String email) {
 
@@ -169,7 +168,7 @@ void loop() {
     if (nfcAdapter.tagPresent()) {
         if (isFormatMode) {
             Serial.println(F("Formatting tag..."));
-            //formatTag();
+            formatTag();
             delay(5000);
         } else {
             Serial.println(F("Writing vCard..."));
