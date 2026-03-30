@@ -8,6 +8,30 @@ PN532_I2C pn532_i2c(Wire);
 PN532 nfcDriver(pn532_i2c);
 NfcAdapter nfcAdapter = NfcAdapter(pn532_i2c);
 bool isFormatMode = false;
+#define XOFF 0x13
+#define XON  0x11
+#define BUFFER_HIGH_WATERMARK 40  // ~75% of 64 bytes, ask to stop sending
+#define BUFFER_LOW_WATERMARK  16 
+
+bool xoffSent = false;
+
+void checkFlowControl(int available) {
+    /*
+    if (available > 0) {
+        Serial.print(F("Available bytes: "));
+        Serial.println(available);
+    }
+    */
+    if (!xoffSent && available >= BUFFER_HIGH_WATERMARK) {
+        Serial.write(XOFF);
+        //Serial.println(F("Flow control: XOFF sent"));
+        xoffSent = true;
+    } else if (xoffSent && available <= BUFFER_LOW_WATERMARK) {
+        Serial.write(XON);
+        //Serial.println(F("Flow control: XON sent"));
+        xoffSent = false;
+    }
+}
 
 bool tryAuthAndWrite(int block, uint8_t* key, uint8_t* data) {
     uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -40,8 +64,8 @@ void formatTag() {
     uint8_t header2[] = { 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1, 0x03, 0xE1 };
     success = nfcDriver.mifareclassic_WriteDataBlock(1, header1);
     success = nfcDriver.mifareclassic_WriteDataBlock(2, header2);
-
     uint8_t emptyBlock[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
     
     for (int sector = 1; sector < 16 && success; sector++) {
         int trailerBlock = (sector * 4) + 3;
@@ -70,7 +94,7 @@ void writeVCard(String name, String phone, String email) {
 
     NdefMessage message = NdefMessage();
     
-    byte vCard[256];
+    byte vCard[720]; // 752 bytes is the max size for a Mifare Classic 1K, but we need to leave some space for the NDEF header and record header, so we use 720 bytes for the vCard data.
     snprintf((char*)vCard, sizeof(vCard), "BEGIN:VCARD\nVERSION:3.0\nFN:%s\nTEL:%s\nEMAIL:%s\nEND:VCARD", name.c_str(), phone.c_str(), email.c_str());
 
 #ifdef DEBUG
@@ -129,9 +153,8 @@ byte buffer[128];
 
 void loop() {
     int available = Serial.available();
-    while (available > 0) {
-        Serial.print(F("Available bytes: "));
-        Serial.println(available);        
+    checkFlowControl(available);
+    if (available > 0) {
         Serial.readBytes(buffer, available);
         for(int i = 0; i < available; i++) {
             char ch = buffer[i];
@@ -162,7 +185,6 @@ void loop() {
                 Serial.println(isFormatMode ? F("Format mode enabled.") : F("Format mode disabled."));
             }
         }
-        available = Serial.available();
     }
         
     if (nfcAdapter.tagPresent()) {
