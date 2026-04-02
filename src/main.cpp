@@ -33,6 +33,7 @@ void checkFlowControl(int available) {
     }
 }
 
+//*
 bool tryAuthAndWrite(int block, uint8_t* key, uint8_t* data) {
     uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
     uint8_t uidLen;
@@ -119,6 +120,7 @@ void writeVCard(char* name, char* phone, char* email) {
     }
     delay(5000);
 }
+//*/
 
 int idx = 0;
 int idxInput = 0;
@@ -190,9 +192,9 @@ void loop() {
             }
         }
     }
-     //*
-    Serial.write(XOFF);
-    xoffSent = true;   
+
+Serial.write(XOFF);
+Serial.flush();
     if (nfcAdapter.tagPresent()) {
         if (isFormatMode) {
             Serial.println(F("Formatting tag..."));
@@ -203,9 +205,7 @@ void loop() {
             writeVCard((char*)inputValues[0], (char*)inputValues[1], (char*)inputValues[2]);
         }
     }
-    Serial.write(XON);
-    xoffSent = false;
-    delay(2);   
-    //*/
+Serial.write(XON);
+Serial.flush();
 
 }
