@@ -10,7 +10,7 @@ NfcAdapter nfcAdapter = NfcAdapter(pn532_i2c);
 bool isFormatMode = false;
 #define XOFF 0x13
 #define XON  0x11
-#define BUFFER_HIGH_WATERMARK 40  // ~75% of 64 bytes, ask to stop sending
+#define BUFFER_HIGH_WATERMARK 20  // ~75% of 64 bytes, ask to stop sending
 #define BUFFER_LOW_WATERMARK  16 
 
 bool xoffSent = false;
@@ -21,7 +21,7 @@ void checkFlowControl(int available) {
         Serial.print(F("Available bytes: "));
         Serial.println(available);
     }
-    */
+    //*/
     if (!xoffSent && available >= BUFFER_HIGH_WATERMARK) {
         Serial.write(XOFF);
         //Serial.println(F("Flow control: XOFF sent"));
@@ -33,6 +33,7 @@ void checkFlowControl(int available) {
     }
 }
 
+//*
 bool tryAuthAndWrite(int block, uint8_t* key, uint8_t* data) {
     uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
     uint8_t uidLen;
@@ -119,6 +120,7 @@ void writeVCard(String name, String phone, String email) {
     }
     delay(5000);
 }
+//*/
 
 int idx = 0;
 String inputValues[3] = {"", "", ""};
@@ -186,7 +188,9 @@ void loop() {
             }
         }
     }
-        
+//*
+Serial.write(XOFF);
+Serial.flush();
     if (nfcAdapter.tagPresent()) {
         if (isFormatMode) {
             Serial.println(F("Formatting tag..."));
@@ -197,5 +201,8 @@ void loop() {
             writeVCard(inputValues[0], inputValues[1], inputValues[2]);
         }
     }
+Serial.write(XON);
+Serial.flush();
+//*/
 
 }
