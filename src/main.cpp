@@ -91,12 +91,12 @@ void formatTag() {
 }
 
 
-void writeVCard(String name, String phone, String email) {
+void writeVCard(char* name, char* phone, char* email) {
 
     NdefMessage message = NdefMessage();
     
     byte vCard[720]; // 752 bytes is the max size for a Mifare Classic 1K, but we need to leave some space for the NDEF header and record header, so we use 720 bytes for the vCard data.
-    snprintf((char*)vCard, sizeof(vCard), "BEGIN:VCARD\nVERSION:3.0\nFN:%s\nTEL:%s\nEMAIL:%s\nEND:VCARD", name.c_str(), phone.c_str(), email.c_str());
+    snprintf((char*)vCard, sizeof(vCard), "BEGIN:VCARD\nVERSION:3.0\nFN:%s\nTEL:%s\nEMAIL:%s\nEND:VCARD", name, phone, email);
 
 #ifdef DEBUG
     Serial.println(F("Generated vCard:"));
@@ -123,7 +123,8 @@ void writeVCard(String name, String phone, String email) {
 //*/
 
 int idx = 0;
-String inputValues[3] = {"", "", ""};
+int idxInput = 0;
+byte inputValues[3][128] = { {0}, {0}, {0} };
 
 void setup() {
     Serial.begin(115200);
@@ -164,22 +165,23 @@ void loop() {
             Serial.print(ch);
 #endif
             if (idx < 3 && ch != ';' && ch != '\n' && ch != '\r' && ch != '\t') {
-                inputValues[idx] += ch;
+                inputValues[idx][idxInput++] = ch;
             }
             if (ch == '\n') {
-                Serial.println(String(F("Name: ")) + inputValues[0]);
+                inputValues[idx][idxInput++] = '\0';
+                Serial.println(String(F("Name: ")) + (char*)inputValues[0]);
                 delay(100);
-                Serial.println(String(F("Phone: ")) + inputValues[1]);
+                Serial.println(String(F("Phone: ")) + (char*)inputValues[1]);
                 delay(100);
-                Serial.println(String(F("Email: ")) + inputValues[2]);
+                Serial.println(String(F("Email: ")) + (char*)inputValues[2]);
             }
             if (ch == ';') {
+                inputValues[idx][idxInput++] = '\0';
                 idx++;
+                idxInput = 0;
             }
             if (ch == '\r') {
-                inputValues[0] = "";
-                inputValues[1] = "";
-                inputValues[2] = "";
+                idxInput = 0;
                 idx = 0;
             }
             if (ch == '\t') {
@@ -198,11 +200,10 @@ Serial.flush();
             delay(5000);
         } else {
             Serial.println(F("Writing vCard..."));
-            writeVCard(inputValues[0], inputValues[1], inputValues[2]);
+            writeVCard((char*)inputValues[0], (char*)inputValues[1], (char*)inputValues[2]);
         }
     }
 Serial.write(XON);
 Serial.flush();
 //*/
-
 }
