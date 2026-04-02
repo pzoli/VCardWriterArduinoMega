@@ -95,7 +95,7 @@ void writeVCard(char* name, char* phone, char* email) {
     NdefMessage message = NdefMessage();
     
     byte vCard[720]; // 752 bytes is the max size for a Mifare Classic 1K, but we need to leave some space for the NDEF header and record header, so we use 720 bytes for the vCard data.
-    snprintf((char*)vCard, sizeof(vCard), "BEGIN:VCARD\nVERSION:3.0\nFN:%s\nTEL:%s\nEMAIL:%s\nEND:VCARD", name, phone, email);
+    snprintf((char*)vCard, sizeof(vCard), "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:%s\r\nTEL:%s\r\nEMAIL:%s\r\nEND:VCARD", name, phone, email);
 
 #ifdef DEBUG
     Serial.println(F("Generated vCard:"));
@@ -154,8 +154,10 @@ byte buffer[128];
 
 void loop() {
     int available = Serial.available();
-    checkFlowControl(available);
+    //checkFlowControl(available);
     if (available > 0) {
+        Serial.print(F("Available bytes: "));
+        Serial.println(available);
         Serial.readBytes(buffer, available);
         for(int i = 0; i < available; i++) {
             char ch = buffer[i];
@@ -188,7 +190,9 @@ void loop() {
             }
         }
     }
-     //*   
+     //*
+    Serial.write(XOFF);
+    xoffSent = true;   
     if (nfcAdapter.tagPresent()) {
         if (isFormatMode) {
             Serial.println(F("Formatting tag..."));
@@ -199,6 +203,9 @@ void loop() {
             writeVCard((char*)inputValues[0], (char*)inputValues[1], (char*)inputValues[2]);
         }
     }
+    Serial.write(XON);
+    xoffSent = false;
+    delay(2);   
     //*/
 
 }
