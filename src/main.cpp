@@ -142,7 +142,7 @@ void loop() {
             char ch = buffer[i];
             if (ch != '\t') {
                 counter++;
-                if (counter >= 63) {
+                if (counter >= SERIAL_RX_BUFFER_SIZE - 1) {
                     counter = 0;
                     Serial.write('\t');
                     Serial.flush();
