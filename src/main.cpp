@@ -8,32 +8,9 @@ PN532_I2C pn532_i2c(Wire);
 PN532 nfcDriver(pn532_i2c);
 NfcAdapter nfcAdapter = NfcAdapter(pn532_i2c);
 bool isFormatMode = false;
-#define XOFF 0x13
-#define XON  0x11
-#define BUFFER_HIGH_WATERMARK 20  // ~75% of 64 bytes, ask to stop sending
-#define BUFFER_LOW_WATERMARK  16 
 
 bool xoffSent = false;
 
-void checkFlowControl(int available) {
-    /*
-    if (available > 0) {
-        Serial.print(F("Available bytes: "));
-        Serial.println(available);
-    }
-    //*/
-    if (!xoffSent && available >= BUFFER_HIGH_WATERMARK) {
-        Serial.write(XOFF);
-        //Serial.println(F("Flow control: XOFF sent"));
-        xoffSent = true;
-    } else if (xoffSent && available <= BUFFER_LOW_WATERMARK) {
-        Serial.write(XON);
-        //Serial.println(F("Flow control: XON sent"));
-        xoffSent = false;
-    }
-}
-
-//*
 bool tryAuthAndWrite(int block, uint8_t* key, uint8_t* data) {
     uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
     uint8_t uidLen;
@@ -124,7 +101,8 @@ void writeVCard(char* name, char* phone, char* email) {
 
 int idx = 0;
 int idxInput = 0;
-byte inputValues[3][128] = { {0}, {0}, {0} };
+#define BUFFER_SIZE 128 
+byte inputValues[3][BUFFER_SIZE] = { {0}, {0}, {0} };
 
 void setup() {
     Serial.begin(115200);
@@ -153,20 +131,28 @@ void setup() {
 }
 
 byte buffer[128];
+byte counter = 0;
 
 void loop() {
     int available = Serial.available();
-    //checkFlowControl(available);
     if (available > 0) {
         Serial.print(F("Available bytes: "));
         Serial.println(available);
         Serial.readBytes(buffer, available);
         for(int i = 0; i < available; i++) {
             char ch = buffer[i];
+            if (ch != '\t') {
+                counter++;
+                if (counter >= 63) {
+                    counter = 0;
+                    Serial.write('\t');
+                    Serial.flush();
+                }
+            }
 #ifdef DEBUG
             Serial.print(ch);
 #endif
-            if (idx < 3 && ch != ';' && ch != '\n' && ch != '\r' && ch != '\t') {
+            if (idx < 3 && ch != ';' && ch != '\n' && ch != '\r' && ch != '\t' && idxInput < BUFFER_SIZE - 1) {
                 inputValues[idx][idxInput++] = ch;
             }
             if (ch == '\n') {
@@ -176,6 +162,7 @@ void loop() {
                 Serial.println(String(F("Phone: ")) + (char*)inputValues[1]);
                 delay(100);
                 Serial.println(String(F("Email: ")) + (char*)inputValues[2]);
+                counter = 0;
             }
             if (ch == ';') {
                 inputValues[idx][idxInput++] = '\0';
@@ -193,8 +180,6 @@ void loop() {
         }
     }
 
-Serial.write(XOFF);
-Serial.flush();
     if (nfcAdapter.tagPresent()) {
         if (isFormatMode) {
             Serial.println(F("Formatting tag..."));
@@ -205,7 +190,5 @@ Serial.flush();
             writeVCard((char*)inputValues[0], (char*)inputValues[1], (char*)inputValues[2]);
         }
     }
-Serial.write(XON);
-Serial.flush();
 
 }
