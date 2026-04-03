@@ -97,7 +97,6 @@ void writeVCard(char* name, char* phone, char* email) {
     }
     delay(5000);
 }
-//*/
 
 int idx = 0;
 int idxInput = 0;
